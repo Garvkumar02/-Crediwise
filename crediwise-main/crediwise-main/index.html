@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrediWise - Smart Loan System</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="#" class="brand">CrediWise</a>
+    <div class="nav-links" id="nav-links">
+      <!-- Injected via JS -->
+    </div>
+  </nav>
+
+  <div class="app-container">
+    <!-- LOGIN Screen -->
+    <div id="login-screen" class="card">
+      <h1>Welcome To CrediWise</h1>
+      <form id="login-form">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="login-email" placeholder="user@example.com" required />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required />
+        </div>
+        <button type="submit">Sign In</button>
+      </form>
+      <p class="link-text">
+        New to CrediWise? <a onclick="showScreen('signup')">Create Account</a>
+      </p>
+    </div>
+
+    <!-- SIGNUP Screen -->
+    <div id="signup-screen" class="card hidden">
+      <h1>Create Account</h1>
+      <form id="signup-form">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="signup-email" placeholder="user@example.com" required />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="signup-password" placeholder="Min 6 characters" required minlength="6" />
+        </div>
+        <button type="submit">Sign Up</button>
+      </form>
+      <p class="link-text">
+        Already have an account? <a onclick="showScreen('login')">Sign In</a>
+      </p>
+    </div>
+
+    <!-- DASHBOARD Screen -->
+    <div id="dashboard-screen" class="card hidden">
+      <h2>My Dashboard</h2>
+      <div style="margin-bottom: 2rem; color: var(--text-muted)">
+        Logged in as:
+        <strong id="user-email-display" style="color: var(--text)">--</strong>
+      </div>
+
+      <div id="last-result-container" class="hidden" style="
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+          ">
+        <h3>Last Recent Check</h3>
+        <div class="metrics">
+          <div class="metric-item">
+            <small>Status</small>
+            <strong id="last-status">--</strong>
+          </div>
+          <div class="metric-item">
+            <small>FOIR</small>
+            <strong id="last-foir">--%</strong>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="showScreen('input')">Run New Eligibility Check</button>
+    </div>
+
+    <!-- INPUT Screen -->
+    <div id="input-screen" class="card hidden">
+      <button onclick="showScreen('dashboard')" class="btn-secondary" style="
+            margin-bottom: 1rem;
+            width: auto;
+            border: none;
+            padding-left: 0;
+          ">
+        ← Back to Dashboard
+      </button>
+      <h2>Financial Details</h2>
+
+      <!-- OCR Section -->
+      <div class="card" style="margin-bottom: 2rem; border-color: var(--secondary)">
+        <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem">⚡ Express Verification</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Upload your bank statement to auto-fill details instantly.
+        </p>
+        <input type="file" id="bank-statement" accept=".pdf,.png,.jpg" style="display: none;"
+          onchange="handleOCR(this)" />
+        <button type="button" onclick="document.getElementById('bank-statement').click()" class="btn-secondary"
+          style="width: auto;">
+          📄 Upload Statement
+        </button>
+        <p id="ocr-status" style="font-size: 0.9rem; margin-top: 0.5rem; min-height: 1.2rem"></p>
+      </div>
+
+      <form id="loan-form">
+        <div class="form-group">
+          <label>Monthly Income (INR)</label>
+          <input type="number" id="income" required min="10000" placeholder="e.g. 50000" />
+        </div>
+        <div class="form-group">
+          <label>Current Monthly EMIs (Total)</label>
+          <input type="number" id="existing-emi" required min="0" placeholder="e.g. 5000" />
+        </div>
+        <div class="form-group">
+          <label>Employment Type</label>
+          <select id="employment" required>
+            <option value="Salaried">Salaried</option>
+            <option value="Self-Employed">Self-Employed / MSME</option>
+            <option value="Gig">Gig Worker</option>
+            <option value="Student">Student</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Applicant Age</label>
+          <input type="number" id="age" required min="16" max="100" placeholder="e.g. 25" />
+        </div>
+        <div class="form-group">
+          <label>Loan Purpose</label>
+          <select id="loan-purpose" required>
+            <option value="Personal">Personal Loan</option>
+            <option value="Education">Education Loan</option>
+            <option value="Business">Business Loan</option>
+            <option value="Home">Home Loan</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Requested Loan Amount</label>
+          <input type="number" id="loan-amount" required min="10000" placeholder="e.g. 500000" />
+        </div>
+        <div class="form-group">
+          <label>Tenure (Months)</label>
+          <input type="number" id="tenure" required min="6" max="360" placeholder="e.g. 24" />
+        </div>
+        <div class="form-group">
+          <label>Credit Score (Optional)</label>
+          <input type="number" id="score" min="300" max="900" placeholder="e.g. 750" />
+        </div>
+        <button type="submit">Check Eligibility</button>
+      </form>
+    </div>
+
+    <!-- RESULT Screen -->
+    <div id="result-screen" class="card hidden">
+      <div id="eligibility-badge" class="status-badge">Checking...</div>
+      <h2 id="result-title">Analysis Complete</h2>
+      <p id="result-reason" style="margin-bottom: 1.5rem; color: var(--text-muted)">
+        Result details here...
+      </p>
+
+      <div class="metrics">
+        <div class="metric-item">
+          <small>Calculated FOIR</small>
+          <strong id="foir-val">--%</strong>
+        </div>
+        <div class="metric-item">
+          <small>Estimated EMI</small>
+          <strong id="emi-val">₹--</strong>
+        </div>
+      </div>
+
+      <h3>Recommended Products</h3>
+      <div id="recommendations" class="results-grid">
+        <!-- Products injected here -->
+      </div>
+
+      <!-- 2. "Why Not?" Transparency Tooltip -->
+      <div id="rejection-analysis" style="margin-top: 2rem; display: none">
+        <h3>Why Not? (Transparency Report)</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1rem">
+          Detailed reasons why other lenders rejected your profile:
+        </p>
+        <div id="rejection-list" style="display: flex; flex-direction: column; gap: 0.5rem">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <!-- 1. "What-If" Eligibility Slider -->
+      <div id="what-if-section" class="card" style="
+            background: rgba(255, 255, 255, 0.05);
+            margin-top: 2rem;
+            border: 1px solid var(--primary);
+          ">
+        <h3>
+          <span style="color: var(--secondary)">⚡ What-If Analysis</span>
+        </h3>
+        <p style="font-size: 0.9rem; margin-bottom: 1rem">
+          See how paying off debt or increasing income boosts your chances.
+        </p>
+
+        <div class="form-group">
+          <label>Reduce Monthly EMI by:
+            <span id="delta-emi-label" style="color: var(--secondary)">₹0</span></label>
+          <input type="range" id="delta-emi" min="0" max="20000" step="1000" value="0" oninput="updateSliderLabels()" />
+        </div>
+
+        <div class="form-group">
+          <label>Increase Monthly Income by:
+            <span id="delta-income-label" style="color: var(--secondary)">₹0</span></label>
+          <input type="range" id="delta-income" min="0" max="50000" step="2500" value="0"
+            oninput="updateSliderLabels()" />
+        </div>
+
+        <button onclick="runWhatIf()" class="btn-primary" style="margin-top: 0.5rem">
+          Simulate Future
+        </button>
+        <div id="simulation-result" style="margin-top: 1rem; font-weight: bold; color: var(--success)"></div>
+      </div>
+
+      <!-- 3. Account Aggregator "Soft-Check" Flow -->
+      <div id="aa-section" style="
+            margin-top: 2rem;
+            text-align: center;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+          ">
+        <p>Want better rates or higher chances?</p>
+        <button onclick="startAAFlow()" style="
+              background: var(--accent);
+              color: black;
+              font-weight: bold;
+              display: inline-flex;
+              align-items: center;
+              gap: 0.5rem;
+            ">
+          <span>🏦</span> Connect Bank Account (Safe Soft-Check)
+        </button>
+        <p style="
+              font-size: 0.8rem;
+              color: var(--text-muted);
+              margin-top: 0.5rem;
+            ">
+          Powered by Account Aggregator Framework • 100% Secure
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 2rem">
+        <button onclick="showScreen('input')" class="btn-secondary">
+          Check Another
+        </button>
+        <button onclick="showScreen('dashboard')" class="btn-secondary">
+          Go to Dashboard
+        </button>
+      </div>
+    </div>
+    <div id="aa-modal" class="modal hidden"
+      style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:1000">
+      <div class="card" style="width:90%; max-width:400px; text-align:center">
+        <div id="aa-step-1">
+          <h3>Connecting to Bank...</h3>
+          <div class="spinner"
+            style="border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto;">
+          </div>
+          <p>Verifying via CAMSPay Account Aggregator</p>
+        </div>
+        <div id="aa-step-2" class="hidden">
+          <h3 style="color:var(--success)">✓ Verified!</h3>
+          <p>Income verified successfully.</p>
+          <p>Trust Score increased by +15 pts.</p>
+          <button onclick="closeAAModal()" class="btn-primary" style="margin-top:1rem">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN Screen -->
+    <div id="admin-screen" class="card hidden" style="max-width: 900px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2>🏦 Bank Manager Dashboard</h2>
+        <button onclick="showScreen('dashboard')" class="btn-secondary" style="width: auto;">Exit Admin</button>
+      </div>
+
+      <div style="margin-bottom: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3>Manage Loan Products</h3>
+          <button onclick="addProduct()" class="btn-primary" style="width: auto; font-size: 0.9rem;">+ Add
+            Product</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="text-align: left; border-bottom: 1px solid var(--glass-border)">
+                <th style="padding: 10px;">Lender</th>
+                <th style="padding: 10px;">Type</th>
+                <th style="padding: 10px;">Interest Rate (%)</th>
+                <th style="padding: 10px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-products-list">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <h3>Recent Applications</h3>
+        <div id="admin-applications-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <div style="margin-top: 3rem;">
+        <h3>Users List</h3>
+        <div id="admin-users-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <style>
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+
+  <script src="firebase-init.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
